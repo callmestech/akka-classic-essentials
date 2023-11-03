@@ -2,7 +2,7 @@ import Dependencies._
 
 val scala213Version = "2.13.12"
 
-ThisBuild / crossScalaVersions := Nil
+ThisBuild / crossScalaVersions := List(scala213Version)
 // sbt-github-actions defaults to using JDK 8 for testing and publishing.
 // The following adds JDK 17 for testing.
 ThisBuild / githubWorkflowJavaVersions += JavaSpec.temurin("17")
