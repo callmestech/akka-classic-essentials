@@ -4,6 +4,7 @@ import akka.actor.Actor
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.actor.ActorRef
+import scala.collection.mutable.ArrayBuffer
 
 object ActorCapabilities extends App {
 
@@ -63,4 +64,5 @@ object ActorCapabilities extends App {
 
   // 5 - forwarding messages
   alice ! WirelessPhoneMessage("Jeppa", bob)
+
 }
