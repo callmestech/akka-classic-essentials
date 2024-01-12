@@ -94,4 +94,113 @@ object ChangingActorBehaviour extends App {
   val mom = system.actorOf(Props[Mom])
 
   mom ! Mom.MomStart(statelessFussyKid)
+
+  // Exercise 1
+  // 1 - recreate the Counter actor with context.become and no Mutable state
+  object Counter {
+    case object Increment
+    case object Decrement
+    case object Print
+  }
+
+  class Counter extends Actor {
+    import Counter._
+
+    override def receive: Receive =
+      countReceive(0)
+
+    def countReceive(currentCount: Int): Receive = {
+      case Increment =>
+        context.become(countReceive(currentCount + 1))
+      case Decrement =>
+        context.become(countReceive(currentCount - 1))
+      case Print =>
+        println(s"[counter actor] The count is $currentCount")
+    }
+  }
+
+  // Exercise 2
+  // A simplified voting system
+  case class Vote(candidate: String)
+  case object VoteStatusRequest
+  case class VoteStatusReply(candidate: Option[String])
+
+  class Citizen extends Actor {
+
+    override def receive: Receive =
+      emptyVote
+
+    def emptyVote: Receive = {
+      case Vote(name) =>
+        context.become(nonEmptyVote(name))
+      case VoteStatusRequest =>
+        context.sender() ! VoteStatusReply(None)
+    }
+
+    def nonEmptyVote(candidate: String): Receive = {
+      case Vote(name) =>
+        context.become(nonEmptyVote(name))
+      case VoteStatusRequest =>
+        context.sender() ! VoteStatusReply(Some(candidate))
+    }
+  }
+
+  case class AggregateVotes(citizens: Set[ActorRef])
+
+  class VoteAggregator extends Actor {
+
+    override def receive: Receive =
+      impl(Set.empty, Map.empty)
+
+    def impl(awaiting: Set[ActorRef], state: Map[String, Int]): Receive = {
+      case AggregateVotes(citizens) =>
+        context.become(impl(citizens, state))
+        citizens.foreach(_ ! VoteStatusRequest)
+      case VoteStatusReply(Some(candidate)) =>
+        val newAwaiting = awaiting.excl(context.sender())
+        val newState = state.updatedWith(candidate) {
+          case Some(value) =>
+            Some(value + 1)
+          case _ =>
+            Some(1)
+        }
+        context.become(impl(newAwaiting, newState))
+        if (newAwaiting.isEmpty) {
+          println(newState.map { case (k, v) => s"$k -> $v" }.mkString("\n"))
+        }
+      case VoteStatusReply(_) =>
+        ()
+    }
+  }
+  // 1
+  val counter = system.actorOf(Props[Counter])
+  counter ! Counter.Increment
+  counter ! Counter.Increment
+  counter ! Counter.Increment
+  counter ! Counter.Increment
+  counter ! Counter.Decrement
+  counter ! Counter.Decrement
+  counter ! Counter.Print
+
+  // 2
+  val alice = system.actorOf(Props[Citizen])
+  val bob = system.actorOf(Props[Citizen])
+  val charlie = system.actorOf(Props[Citizen])
+  val daniel = system.actorOf(Props[Citizen])
+
+  alice ! Vote("Martin")
+  bob ! Vote("Jonas")
+  charlie ! Vote("Roland")
+  daniel ! Vote("Roland")
+
+  val voteAggregator = system.actorOf(Props[VoteAggregator])
+  voteAggregator ! AggregateVotes(Set(alice, bob, charlie, daniel))
+
+  /*
+   * Print the status of the voting
+   *
+   * Martin -> 1
+   * Jonas -> 1
+   * Roland -> 2
+   * */
 }
