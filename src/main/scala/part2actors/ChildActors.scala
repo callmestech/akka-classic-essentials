@@ -115,4 +115,6 @@ object ChildActors extends App {
   Thread.sleep(500)
   val ccSelection = system.actorSelection("/user/account/card")
   ccSelection ! CheckStatus
+
+  // WRONG !!!!
 }
